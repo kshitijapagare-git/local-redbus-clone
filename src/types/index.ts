@@ -19,6 +19,7 @@ export interface Offer {
   valid: string
   code: string
   tone: OfferTone
+  category: 'bus' | 'train'
 }
 
 export interface Route {
