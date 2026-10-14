@@ -1,42 +1,17 @@
-import BoardingPointList from './components/BoardingPointList'
-import Header from './components/Header'
-import Offers from './components/Offers'
-import SearchCard from './components/SearchCard'
-import { boardingPoints, cities } from './data'
+import { BrowserRouter, Route, Routes } from 'react-router-dom'
+import HomePage from './pages/HomePage'
+import SearchResults from './pages/SearchResults'
 import './App.css'
 
 function App() {
   return (
-    <>
-      <Header />
-      <section className="hero">
-        <div className="hero-scene" aria-hidden="true">
-          <div className="hill hill-back" />
-          <div className="hill hill-front" />
-          <div className="road" />
-          <div className="hero-bus">🚌</div>
-        </div>
-        <div className="container">
-          <h1>
-            India's No. 1 online
-            <br />
-            bus ticket booking site
-          </h1>
-        </div>
-      </section>
-      <div className="container search-wrap">
-        <SearchCard />
-      </div>
-      <main>
-        <Offers />
-        <section className="container section" aria-labelledby="boarding-points-heading">
-          <div className="section-head">
-            <h2 id="boarding-points-heading">Boarding Points</h2>
-          </div>
-          <BoardingPointList cities={cities} boardingPoints={boardingPoints} />
-        </section>
-      </main>
-    </>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/search" element={<SearchResults />} />
+        <Route path="*" element={<HomePage />} />
+      </Routes>
+    </BrowserRouter>
   )
 }
 

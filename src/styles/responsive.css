@@ -25,4 +25,10 @@
   .women-box {
     flex: 1 1 100%;
   }
+  .date-field .date-input {
+    flex: 1 1 100%;
+  }
+  .date-error {
+    text-align: left;
+  }
 }

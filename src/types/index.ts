@@ -20,3 +20,9 @@ export interface Offer {
   code: string
   tone: OfferTone
 }
+
+export interface Route {
+  id: number
+  fromCityId: City['id']
+  toCityId: City['id']
+}

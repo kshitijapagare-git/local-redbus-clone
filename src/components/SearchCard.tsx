@@ -1,13 +1,32 @@
 import { useState } from 'react'
-import type { ReactElement } from 'react'
+import type { ChangeEvent, ReactElement } from 'react'
 import CityAutocomplete from './CityAutocomplete'
 import { cities as defaultCities } from '../data'
 import { classNames } from '../lib/classNames'
-import { DAY_OPTIONS, formatDate, getJourneyDay, TODAY_OFFSET } from '../lib/date'
+import {
+  DAY_OPTIONS,
+  formatDate,
+  getJourneyDay,
+  isPastDate,
+  parseDateParam,
+  TODAY_OFFSET,
+  toDateParam,
+} from '../lib/date'
+import type { SearchQuery } from '../lib/search'
 import type { City } from '../types'
 
 interface SearchCardProps {
   cities?: City[]
+  initialFromCityId?: City['id'] | null
+  initialToCityId?: City['id'] | null
+  initialDate?: string | null
+  onSearch?: (query: SearchQuery) => void
+}
+
+interface SearchErrors {
+  from?: string
+  to?: string
+  date?: string
 }
 
 function validateSearch(
@@ -38,17 +57,51 @@ function validateSearch(
   return errors
 }
 
-function SearchCard({ cities = defaultCities }: SearchCardProps): ReactElement {
+function validateDate(value: string, today: Date): string | undefined {
+  if (value.trim().length === 0) {
+    return undefined
+  }
+
+  const date = parseDateParam(value)
+  if (!date) {
+    return 'Please select a valid date'
+  }
+
+  if (isPastDate(date, today)) {
+    return 'Date cannot be in the past'
+  }
+
+  return undefined
+}
+
+function SearchCard({
+  cities = defaultCities,
+  initialFromCityId = null,
+  initialToCityId = null,
+  initialDate = null,
+  onSearch,
+}: SearchCardProps): ReactElement {
   const [today] = useState(() => new Date())
   const [dayOffset, setDayOffset] = useState(TODAY_OFFSET)
+  const [dateInputValue, setDateInputValue] = useState(initialDate ?? '')
   const [forWomen, setForWomen] = useState(false)
-  const [fromCityId, setFromCityId] = useState<City['id'] | null>(null)
-  const [toCityId, setToCityId] = useState<City['id'] | null>(null)
-  const [fromText, setFromText] = useState('')
-  const [toText, setToText] = useState('')
-  const [errors, setErrors] = useState<{ from?: string; to?: string }>({})
+  const [fromCityId, setFromCityId] = useState<City['id'] | null>(initialFromCityId ?? null)
+  const [toCityId, setToCityId] = useState<City['id'] | null>(initialToCityId ?? null)
+  const [fromText, setFromText] = useState(() => {
+    const city = cities.find((candidate) => candidate.id === initialFromCityId)
+    return city?.name ?? ''
+  })
+  const [toText, setToText] = useState(() => {
+    const city = cities.find((candidate) => candidate.id === initialToCityId)
+    return city?.name ?? ''
+  })
+  const [errors, setErrors] = useState<SearchErrors>({})
 
   const journeyDay = getJourneyDay(today, dayOffset)
+  const hasCustomDate = dateInputValue.trim().length > 0
+  const customDate = hasCustomDate ? parseDateParam(dateInputValue) : null
+  const displayDate = customDate ?? journeyDay.date
+  const displayLabel = customDate ? '' : journeyDay.label
 
   const handleFromTextChange = (text: string) => {
     setFromText(text)
@@ -82,8 +135,37 @@ function SearchCard({ cities = defaultCities }: SearchCardProps): ReactElement {
     setErrors({})
   }
 
+  const handleDateChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const nextValue = event.target.value
+    setDateInputValue(nextValue)
+    setErrors((current) => ({ ...current, date: validateDate(nextValue, today) }))
+  }
+
+  const handleDaySelect = (offset: number) => {
+    setDayOffset(offset)
+    setDateInputValue('')
+    setErrors((current) => ({ ...current, date: undefined }))
+  }
+
   const handleSearch = () => {
-    setErrors(validateSearch(fromCityId, fromText, toCityId, toText))
+    const nextErrors: SearchErrors = validateSearch(fromCityId, fromText, toCityId, toText)
+    const dateError = validateDate(dateInputValue, today)
+    if (dateError) {
+      nextErrors.date = dateError
+    }
+
+    setErrors(nextErrors)
+
+    if (nextErrors.from || nextErrors.to || nextErrors.date) {
+      return
+    }
+
+    if (fromCityId === null || toCityId === null) {
+      return
+    }
+
+    const date = hasCustomDate ? dateInputValue : toDateParam(journeyDay.date)
+    onSearch?.({ fromId: fromCityId, toId: toCityId, date })
   }
 
   return (
@@ -122,23 +204,33 @@ function SearchCard({ cities = defaultCities }: SearchCardProps): ReactElement {
             </span>
             <div className="date-text">
               <small>Date of Journey</small>
-              <strong>{formatDate(journeyDay.date)}</strong>
-              <em>({journeyDay.label})</em>
+              <strong>{formatDate(displayDate)}</strong>
+              {displayLabel ? <em>({displayLabel})</em> : null}
             </div>
             {DAY_OPTIONS.map((option) => {
-              const isSelected = option.offset === dayOffset
+              const isSelected = !hasCustomDate && option.offset === dayOffset
               return (
                 <button
                   key={option.offset}
                   type="button"
                   className={classNames('chip', isSelected && 'chip-active')}
                   aria-pressed={isSelected}
-                  onClick={() => setDayOffset(option.offset)}
+                  onClick={() => handleDaySelect(option.offset)}
                 >
                   {option.label}
                 </button>
               )
             })}
+            <input
+              className="date-input"
+              type="date"
+              aria-label="Journey date"
+              min={toDateParam(today)}
+              value={dateInputValue}
+              onChange={handleDateChange}
+              aria-invalid={errors.date ? true : undefined}
+              aria-describedby={errors.date ? 'journey-date-error' : undefined}
+            />
           </div>
         </div>
         <div className="women-box">
@@ -159,6 +251,11 @@ function SearchCard({ cities = defaultCities }: SearchCardProps): ReactElement {
           />
         </div>
       </div>
+      {errors.date ? (
+        <p className="date-error" id="journey-date-error" role="alert">
+          {errors.date}
+        </p>
+      ) : null}
       <button type="button" className="search-btn" onClick={handleSearch}>
         <span aria-hidden="true">⌕</span> Search buses
       </button>

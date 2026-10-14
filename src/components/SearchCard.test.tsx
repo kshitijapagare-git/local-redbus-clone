@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import SearchCard from './SearchCard'
@@ -139,5 +139,97 @@ describe('SearchCard', () => {
     await user.type(from, 'pu')
 
     expect(from).not.toHaveAccessibleDescription()
+  })
+
+  it('renders a journey date picker that blocks past dates', () => {
+    render(<SearchCard />)
+    const dateInput = screen.getByLabelText('Journey date')
+    expect(dateInput).toBeInTheDocument()
+    expect(dateInput).toHaveAttribute('min', '2026-10-02')
+  })
+
+  it('overrides the day chips when a date is picked', () => {
+    render(<SearchCard />)
+
+    fireEvent.change(screen.getByLabelText('Journey date'), {
+      target: { value: '2026-10-05' },
+    })
+
+    expect(screen.getByText('05 Oct, 2026')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Today' })).toHaveAttribute('aria-pressed', 'false')
+    expect(screen.getByRole('button', { name: 'Tomorrow' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    )
+  })
+
+  it('clears a picked date when a day chip is clicked', () => {
+    render(<SearchCard />)
+
+    fireEvent.change(screen.getByLabelText('Journey date'), {
+      target: { value: '2026-10-05' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Tomorrow' }))
+
+    expect(screen.getByLabelText('Journey date')).toHaveValue('')
+    expect(screen.getByRole('button', { name: 'Tomorrow' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByText('03 Oct, 2026')).toBeInTheDocument()
+  })
+
+  it('prefills the card from initial search values', () => {
+    render(
+      <SearchCard initialFromCityId={1} initialToCityId={2} initialDate="2026-10-05" />,
+    )
+
+    expect(screen.getByRole('combobox', { name: 'From' })).toHaveValue('Pune')
+    expect(screen.getByRole('combobox', { name: 'To' })).toHaveValue('Bengaluru')
+    expect(screen.getByLabelText('Journey date')).toHaveValue('2026-10-05')
+    expect(screen.getByText('05 Oct, 2026')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Today' })).toHaveAttribute('aria-pressed', 'false')
+  })
+
+  it('blocks a past journey date and shows an error instead of searching', async () => {
+    const user = userEvent.setup()
+    const onSearch = vi.fn()
+    render(<SearchCard onSearch={onSearch} />)
+
+    const from = screen.getByRole('combobox', { name: 'From' })
+    await user.type(from, 'pu')
+    await user.click(screen.getByRole('option', { name: 'Pune, Maharashtra' }))
+
+    const to = screen.getByRole('combobox', { name: 'To' })
+    await user.type(to, 'be')
+    await user.click(screen.getByRole('option', { name: 'Bengaluru, Karnataka' }))
+
+    fireEvent.change(screen.getByLabelText('Journey date'), {
+      target: { value: '2000-01-01' },
+    })
+
+    await user.click(screen.getByRole('button', { name: 'Search buses' }))
+
+    expect(onSearch).not.toHaveBeenCalled()
+    expect(screen.getByText('Date cannot be in the past')).toBeInTheDocument()
+  })
+
+  it('calls onSearch with the selected cities and journey date', async () => {
+    const user = userEvent.setup()
+    const onSearch = vi.fn()
+    render(<SearchCard onSearch={onSearch} />)
+
+    const from = screen.getByRole('combobox', { name: 'From' })
+    await user.type(from, 'pu')
+    await user.click(screen.getByRole('option', { name: 'Pune, Maharashtra' }))
+
+    const to = screen.getByRole('combobox', { name: 'To' })
+    await user.type(to, 'be')
+    await user.click(screen.getByRole('option', { name: 'Bengaluru, Karnataka' }))
+
+    fireEvent.change(screen.getByLabelText('Journey date'), {
+      target: { value: '2026-10-02' },
+    })
+
+    await user.click(screen.getByRole('button', { name: 'Search buses' }))
+
+    expect(onSearch).toHaveBeenCalledWith({ fromId: 1, toId: 2, date: '2026-10-02' })
   })
 })
