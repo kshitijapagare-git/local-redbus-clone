@@ -3,6 +3,7 @@
 @import './styles/header.css';
 @import './styles/hero.css';
 @import './styles/search-card.css';
+@import './styles/city-autocomplete.css';
 @import './styles/sections.css';
 @import './styles/offers.css';
 @import './styles/boarding-points.css';

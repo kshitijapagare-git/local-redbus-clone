@@ -45,4 +45,99 @@ describe('SearchCard', () => {
     await user.click(toggle)
     expect(toggle).toHaveAttribute('aria-checked', 'true')
   })
+
+  it('renders From and To comboboxes with a swap button between them', () => {
+    render(<SearchCard />)
+    expect(screen.getByRole('combobox', { name: 'From' })).toBeInTheDocument()
+    expect(screen.getByRole('combobox', { name: 'To' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Swap From and To' })).toBeInTheDocument()
+  })
+
+  it('shows a required error next to each empty field when searching', async () => {
+    const user = userEvent.setup()
+    render(<SearchCard />)
+
+    await user.click(screen.getByRole('button', { name: 'Search buses' }))
+
+    expect(screen.getByRole('combobox', { name: 'From' })).toHaveAccessibleDescription(
+      'Please select a city',
+    )
+    expect(screen.getByRole('combobox', { name: 'To' })).toHaveAccessibleDescription(
+      'Please select a city',
+    )
+  })
+
+  it('requires a chosen suggestion when text matches a city but none was selected', async () => {
+    const user = userEvent.setup()
+    render(<SearchCard />)
+
+    const from = screen.getByRole('combobox', { name: 'From' })
+    await user.type(from, 'pu')
+    await user.click(screen.getByRole('button', { name: 'Search buses' }))
+
+    expect(from).toHaveAccessibleDescription('Please select a city from the list')
+  })
+
+  it('shows an error on both fields when the same city is selected twice', async () => {
+    const user = userEvent.setup()
+    render(<SearchCard />)
+
+    const from = screen.getByRole('combobox', { name: 'From' })
+    await user.type(from, 'pu')
+    await user.click(screen.getByRole('option', { name: 'Pune, Maharashtra' }))
+
+    const to = screen.getByRole('combobox', { name: 'To' })
+    await user.type(to, 'pu')
+    await user.click(screen.getByRole('option', { name: 'Pune, Maharashtra' }))
+
+    await user.click(screen.getByRole('button', { name: 'Search buses' }))
+
+    expect(from).toHaveAccessibleDescription('From and To must be different')
+    expect(to).toHaveAccessibleDescription('From and To must be different')
+  })
+
+  it('exchanges the two selected cities when swapping', async () => {
+    const user = userEvent.setup()
+    render(<SearchCard />)
+
+    const from = screen.getByRole('combobox', { name: 'From' })
+    await user.type(from, 'pu')
+    await user.click(screen.getByRole('option', { name: 'Pune, Maharashtra' }))
+
+    const to = screen.getByRole('combobox', { name: 'To' })
+    await user.type(to, 'be')
+    await user.click(screen.getByRole('option', { name: 'Bengaluru, Karnataka' }))
+
+    await user.click(screen.getByRole('button', { name: 'Swap From and To' }))
+
+    expect(from).toHaveValue('Bengaluru')
+    expect(to).toHaveValue('Pune')
+  })
+
+  it('keeps an empty field empty when swapping a single selection', async () => {
+    const user = userEvent.setup()
+    render(<SearchCard />)
+
+    const from = screen.getByRole('combobox', { name: 'From' })
+    await user.type(from, 'pu')
+    await user.click(screen.getByRole('option', { name: 'Pune, Maharashtra' }))
+
+    await user.click(screen.getByRole('button', { name: 'Swap From and To' }))
+
+    expect(from).toHaveValue('')
+    expect(screen.getByRole('combobox', { name: 'To' })).toHaveValue('Pune')
+  })
+
+  it('clears a field error as soon as that field is edited', async () => {
+    const user = userEvent.setup()
+    render(<SearchCard />)
+
+    await user.click(screen.getByRole('button', { name: 'Search buses' }))
+    const from = screen.getByRole('combobox', { name: 'From' })
+    expect(from).toHaveAccessibleDescription('Please select a city')
+
+    await user.type(from, 'pu')
+
+    expect(from).not.toHaveAccessibleDescription()
+  })
 })

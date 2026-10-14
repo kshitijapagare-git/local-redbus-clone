@@ -1,0 +1,47 @@
+/* City autocomplete */
+.city-autocomplete {
+  position: relative;
+  flex: 1 1 160px;
+  min-width: 0;
+}
+.city-autocomplete .field {
+  width: 100%;
+}
+.city-autocomplete-listbox {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.12);
+  z-index: 20;
+}
+.city-autocomplete-option {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.city-autocomplete-option.active {
+  background: var(--red-soft);
+}
+.city-autocomplete-name {
+  font-weight: 600;
+}
+.city-autocomplete-state {
+  color: var(--muted);
+  font-size: 13px;
+}
+.city-autocomplete-error {
+  margin: 6px 0 0;
+  color: var(--red);
+  font-size: 13px;
+}
